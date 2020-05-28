@@ -19,10 +19,9 @@ roslaunch mushr_control map_server.launch
 roslaunch mushr_sim multi_teleop.launch
 ```
 
-3. start controllers 
+3. start controllers for both cars
 ```
-roslaunch mushr_control mpc_controller.launch car_name:=car1 &
-roslaunch mushr_control mpc_controller.launch car_name:=car2
+bash scripts/multi_car_mpc.sh
 ```
 
 4. In rviz, move the cars to different locations
