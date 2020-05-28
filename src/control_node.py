@@ -70,7 +70,7 @@ class ControlNode:
         exit(0)
 
     def load_controller(self):
-        self.controller_type = rospy.get_param("/controller/type", default="PID")
+        self.controller_type = rospy.get_param("controller/type", default="PID")
         self.controller = controllers[self.controller_type]()
 
     def setup_pub_sub(self):
@@ -78,23 +78,23 @@ class ControlNode:
         rospy.Service("~reset/state", SrvEmpty,  self.srv_reset_state)
         rospy.Service("~reset/params", SrvEmpty, self.srv_reset_params)
 
-        rospy.Subscriber("/initialpose",
+        rospy.Subscriber("initialpose",
                 PoseWithCovarianceStamped, self.cb_init_pose, queue_size=1)
-        rospy.Subscriber("/controller/set_path",
+        rospy.Subscriber("controller/set_path",
                 XYHVPath, self.cb_path, queue_size=1)
 
-        rospy.Service("/controller/follow_path", FollowPath, self.cb_path)
+        rospy.Service("controller/follow_path", FollowPath, self.cb_path)
 
         car_pose_topic = \
-            ('/car_pose' if int(rospy.get_param('/controller/use_sim_pose')) == 1
-            else '/pf/inferred_pose')
+            ('car_pose' if int(rospy.get_param('controller/use_sim_pose')) == 1
+            else 'pf/inferred_pose')
         rospy.Subscriber(car_pose_topic, PoseStamped,
                          self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
             rospy.get_param(
                 "~ctrl_topic",
-                default="/mux/ackermann_cmd_mux/input/navigation"
+                default="mux/ackermann_cmd_mux/input/navigation"
             ),
             AckermannDriveStamped, queue_size=2
         )
@@ -102,7 +102,7 @@ class ControlNode:
         self.rp_cte = rospy.Publisher(
             rospy.get_param(
                 "~cte_viz_topic",
-                default="/controller/cte"
+                default="controller/cte"
             ),
             Float32, queue_size=2
         )
@@ -110,7 +110,7 @@ class ControlNode:
         self.rp_waypoints = rospy.Publisher(
             rospy.get_param(
                 "~waypoint_viz_topic",
-                default="/controller/path/waypoints"
+                default="controller/path/waypoints"
             ),
             Marker, queue_size=2
         )
@@ -118,7 +118,7 @@ class ControlNode:
         self.rp_waypoint = rospy.Publisher(
             rospy.get_param(
                 "~selected_waypoint_viz_topic",
-                default="/controller/path/selected_waypoint"
+                default="controller/path/selected_waypoint"
             ),
             PoseStamped, queue_size=2
         )
@@ -126,7 +126,7 @@ class ControlNode:
         self.rp_path_viz = rospy.Publisher(
             rospy.get_param(
                 "~poses_viz_topic",
-                default="/controller/path/poses"
+                default="controller/path/poses"
             ),
             PoseArray, queue_size=2
         )

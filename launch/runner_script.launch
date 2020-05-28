@@ -1,0 +1,7 @@
+<launch>
+    <arg name="car_name" default="car" />
+    <group ns="$(arg car_name)">
+
+	    <node pkg="mushr_control" name="runner_script" type="runner_script.py" output="screen" />
+	</group>
+</launch>

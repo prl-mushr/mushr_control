@@ -78,8 +78,8 @@ import tf
 
 def get_current_pose():
     car_pose_topic = \
-            ('/pf/inferred_pose' if rospy.has_param('/controller/use_sim_pose') and int(rospy.get_param('/controller/use_sim_pose')) == 0
-            else '/car_pose')
+            ('pf/inferred_pose' if rospy.has_param('controller/use_sim_pose') and int(rospy.get_param('controller/use_sim_pose')) == 0
+            else 'car_pose')
     print("Listening to {} for initial pose".format(car_pose_topic))
     car_pose_msg = rospy.wait_for_message(car_pose_topic, PoseStamped)
     tf_listener = tf.TransformListener()
@@ -138,6 +138,6 @@ if __name__ == '__main__':
         speeds[-len(ramp_down):] = ramp_down
         path = XYHVPath(h, [XYHV(*[config[0], config[1], config[2], speed]) for config, speed in zip(configs, speeds)])
     print "Sending path..."
-    controller = rospy.ServiceProxy("/controller/follow_path", FollowPath())
+    controller = rospy.ServiceProxy("controller/follow_path", FollowPath())
     success = controller(path)
     print "Controller started."
