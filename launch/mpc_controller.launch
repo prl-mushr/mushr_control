@@ -2,10 +2,9 @@
     <arg name="controller" default="MPC" />
     <arg name="car_name" default="car" />
     <group ns="$(arg car_name)">
-        <node pkg="mushr_control" type="main.py" name="controller" output="screen">
+        <node pkg="mushr_control" type="main.py" name="controller">
             <param name="type" value="$(arg controller)" />
-
-            <param name="use_sim_pose" value="1" />
+            <param name="use_sim_pose" value="1" /><!-- TODO -->
         </node>
     </group>
 </launch>

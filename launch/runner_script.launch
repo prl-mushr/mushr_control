@@ -1,7 +1,10 @@
 <launch>
     <arg name="car_name" default="car" />
-    <group ns="$(arg car_name)">
+    <arg name="wait_for_signal" default="false" />
 
-	    <node pkg="mushr_control" name="runner_script" type="runner_script.py" output="screen" />
-	</group>
+    <group ns="$(arg car_name)">
+        <node pkg="mushr_control" name="runner_script" type="runner_script.py" output="screen">
+            <param name="wait_for_signal" value="$(arg wait_for_signal)" />
+        </node>
+    </group>
 </launch>

@@ -1,6 +1,7 @@
 import numpy as np
 import rospy
 import utils
+from geometry_msgs.msg import PoseStamped
 
 from controller import BaseController
 
@@ -10,6 +11,25 @@ from nav_msgs.srv import GetMap
 class ModelPredictiveController(BaseController):
     def __init__(self):
         super(ModelPredictiveController, self).__init__()
+        use_dynamic_obstacles = rospy.search_param("use_dynamic_obstacles")
+        if use_dynamic_obstacles:
+            dynamic_obstacles = rospy.get_param(rospy.search_param("use_dynamic_obstacles"), False)
+            if dynamic_obstacles:
+                print("MPC: use dynamic_obstacles")
+                dynamic_obstacle_topics = rospy.get_param(rospy.search_param("dynamic_obstacle_topics"))
+                self.num_obstacles = len(dynamic_obstacle_topics)
+                self.dynamic_obstacles = np.zeros((self.num_obstacles, 2), dtype=np.float)
+                for i, topic in enumerate(dynamic_obstacle_topics):
+                    topic += "/car_pose"
+                    rospy.Subscriber(topic, PoseStamped, self.update_obstacle, (i), queue_size=1)
+        else:
+            self.dynamic_obstacles = None
+            self.num_obstacles = 0
+        self.reset_params()
+
+    def update_obstacle(self, msg, index):
+        pose = msg.pose
+        self.dynamic_obstacles[index] = np.array([pose.position.x, pose.position.y], dtype=np.float)
 
     def reset_params(self):
         with self.path_lock:
@@ -17,13 +37,16 @@ class ModelPredictiveController(BaseController):
             self.exceed_threshold = float(rospy.get_param("mpc/exceed_threshold", 4.0))
             self.waypoint_lookahead = float(rospy.get_param("mpc/waypoint_lookahead", 1.0))
 
-            self.K = int(rospy.get_param("mpc/K", 62)) # Sample K rollouts
-            self.T = int(rospy.get_param("mpc/T", 8)) # Each rollout has T steps
-            self.speed = \
-                float(rospy.get_param("mpc/speed", 1.0)) # speed of car in
+            self.K = int(rospy.get_param("mpc/K", 24)) # Sample K rollouts
+            self.T = int(rospy.get_param("mpc/T", 20)) # Each rollout has T steps
+            self.speed = 0.5 #np.random.uniform(0.2, 4.0)
+            # print("speed", self.speed)
+                # float(rospy.get_param("mpc/speed", 1.0)) # speed of car in
                                                          # sample rollouts
 
-            self.collision_w = float(rospy.get_param("mpc/collision_w", 1e5))
+            # self.collision_w = float(rospy.get_param("mpc/collision_w", 1e5))
+            self.collision_w = 1e3*np.tile(np.reshape(1e2*np.arange(self.T+1.0, 1, -1), (1, self.T)), (self.K, 1))
+
             self.error_w = float(rospy.get_param("mpc/error_w", 1.0))
 
             self.car_length = float(rospy.get_param("mpc/car_length", 0.33))
@@ -45,6 +68,18 @@ class ModelPredictiveController(BaseController):
             self.map_angle = utils.rosquaternion_to_angle(self.map.info.origin.orientation)
             self.map_c = np.cos(self.map_angle)
             self.map_s = np.sin(self.map_angle)
+
+            L = self.car_length
+            W = self.car_width
+
+            # Specify specs of bounding box
+            self.bbox = np.array([
+                [L / 2.0, W / 2.0],
+                [L / 2.0, -W / 2.0],
+                [-L / 2.0, W / 2.0],
+                [-L / 2.0, -W / 2.0]
+            ]) / (self.map.info.resolution)
+
 
     def get_control(self, pose, index):
 
@@ -105,9 +140,8 @@ class ModelPredictiveController(BaseController):
         step_size = (self.max_delta - self.min_delta) / (self.K - 1)
         ctrls[:, :, 0] = self.speed
         for t in range(self.T):
-            ctrls[:, t, 1] = np.arange(self.min_delta, self.max_delta + step_size, step_size)
+            ctrls[:, t, 1] = np.linspace(self.min_delta, self.max_delta, self.K)
         return ctrls
-        raise NotImplementedError
 
     def apply_kinematics(self, cur_x, control):
         '''
@@ -140,8 +174,6 @@ class ModelPredictiveController(BaseController):
         theta_dot = ((speed * np.tan(steering_angle)) / (self.wheelbase)) * dt
         return (x_dot, y_dot, theta_dot)
 
-        raise NotImplementedError
-
     def calculate_cost_for_rollouts(self, poses, index):
         '''
         rollouts (K,T,3) - poses of each rollout
@@ -156,7 +188,7 @@ class ModelPredictiveController(BaseController):
         all_poses.resize(self.K * self.T, 3)
         collisions = self.check_collisions_in_map(all_poses)
         collisions.resize(self.K, self.T)
-        collision_cost = collisions.sum(axis=1) * self.collision_w
+        collision_cost = np.sum(collisions * self.collision_w, axis=1)
         error_cost = np.linalg.norm(poses[:, self.T - 1, :2] - self.path[index, :2], axis=1) * self.error_w
 
         return collision_cost + error_cost
@@ -178,17 +210,7 @@ class ModelPredictiveController(BaseController):
 
         self.world2map(poses, out=self.scaled)
 
-        L = self.car_length
-        W = self.car_width
-
-        # Specify specs of bounding box
-        bbox = np.array([
-            [L / 2.0, W / 2.0],
-            [L / 2.0, -W / 2.0],
-            [-L / 2.0, W / 2.0],
-            [-L / 2.0, -W / 2.0]
-        ]) / (self.map.info.resolution)
-
+        bbox = self.bbox
         x = np.tile(bbox[:, 0], (len(poses), 1))
         y = np.tile(bbox[:, 1], (len(poses), 1))
 
@@ -209,6 +231,12 @@ class ModelPredictiveController(BaseController):
         self.perm = np.logical_or(self.perm, self.perm_reg[bbox_idx[:, 1, 1], bbox_idx[:, 0, 1]])
         self.perm = np.logical_or(self.perm, self.perm_reg[bbox_idx[:, 1, 2], bbox_idx[:, 0, 2]])
         self.perm = np.logical_or(self.perm, self.perm_reg[bbox_idx[:, 1, 3], bbox_idx[:, 0, 3]])
+
+        if self.num_obstacles > 0:
+            pose_diff = np.tile(poses[:, :2][:, None, :],(1, self.dynamic_obstacles.shape[0], 1)) - np.tile(self.dynamic_obstacles[None, :, :],(poses.shape[0], 1, 1))
+            distance = np.linalg.norm(pose_diff, axis=2)
+            in_collision = np.any(distance < 1.0, axis=1)
+            self.perm = np.logical_or(self.perm, in_collision)
 
         return self.perm.astype(np.float)
 

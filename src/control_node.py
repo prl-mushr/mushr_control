@@ -82,7 +82,6 @@ class ControlNode:
                 PoseWithCovarianceStamped, self.cb_init_pose, queue_size=1)
         rospy.Subscriber("controller/set_path",
                 XYHVPath, self.cb_path, queue_size=1)
-
         rospy.Service("controller/follow_path", FollowPath, self.cb_path)
 
         car_pose_topic = \
