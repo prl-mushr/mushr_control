@@ -33,7 +33,7 @@ class ModelPredictiveController(BaseController):
 
     def reset_params(self):
         with self.path_lock:
-            self.finish_threshold = float(rospy.get_param("mpc/finish_threshold", 1.0))
+            self.finish_threshold = float(rospy.get_param("mpc/finish_threshold", 0.2))
             self.exceed_threshold = float(rospy.get_param("mpc/exceed_threshold", 4.0))
             self.waypoint_lookahead = float(rospy.get_param("mpc/waypoint_lookahead", 1.0))
 

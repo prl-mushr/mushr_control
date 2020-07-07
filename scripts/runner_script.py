@@ -7,7 +7,7 @@ import tf.transformations
 
 import numpy as np
 import pickle
-from scipy import signal
+#from scipy import signal
 import rospy
 
 
@@ -52,7 +52,7 @@ def left_turn():
 def right_turn():
     waypoint_sep = 0.1
     turn_radius = 1.5
-    straight_len = 10.0
+    straight_len = 1.5
     turn_center = [straight_len, -turn_radius]
     straight_xs = np.linspace(0, straight_len, int(straight_len / waypoint_sep))
     straight_poses = [[x, 0, 0] for x in straight_xs]
