@@ -4,7 +4,7 @@ import threading
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Empty
+from std_msgs.msg import Empty, Bool
 from std_msgs.msg import Header, Float32
 from std_srvs.srv import Empty as SrvEmpty
 from mushr_control.msg import XYHVPath
@@ -25,6 +25,7 @@ controllers = {
 
 class ControlNode:
     def __init__(self, name):
+        self.running = False
         self.ackermann_msg_id = 0
 
         self.path_event = threading.Event()
@@ -55,7 +56,10 @@ class ControlNode:
                 self.publish_selected_pose(pose)
                 self.publish_cte(cte)
                 next_ctrl = self.controller.get_control(ip, index)
-                if next_ctrl is not None:
+
+                # Check for signal to run
+                if self.running and next_ctrl is not None:
+                    rospy.logwarn("sending command")
                     self.publish_ctrl(next_ctrl)
                 if self.controller.path_complete(ip, error):
                     print("Path Completed!")
@@ -83,6 +87,10 @@ class ControlNode:
         rospy.Subscriber("controller/set_path",
                 XYHVPath, self.cb_path, queue_size=1)
         rospy.Service("controller/follow_path", FollowPath, self.cb_path)
+
+        self.runner = rospy.Subscriber(
+            "controller/running",
+            Bool, self.set_running, queue_size=1)
 
         car_pose_topic = \
             ('car_pose' if int(rospy.get_param('controller/use_sim_pose')) == 1
@@ -129,6 +137,9 @@ class ControlNode:
             ),
             PoseArray, queue_size=2
         )
+
+    def set_running(self, msg):
+        self.running = msg.data
 
     def srv_reset_hard(self, msg):
         '''
