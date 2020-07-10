@@ -7,4 +7,7 @@
             <param name="use_sim_pose" value="1" /><!-- TODO -->
         </node>
     </group>
+
+    <arg name="map_file" default="$(find mushr_control)/maps/sandbox.yaml" />
+    <node pkg="map_server" name="map_server" type="map_server" args="$(arg map_file)"/>
 </launch>
