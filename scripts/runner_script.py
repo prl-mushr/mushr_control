@@ -148,7 +148,7 @@ def generate_plan(local_coordinates=True):
 
 def send_path(path):
     print ("Sending path...")
-    controller = rospy.ServiceProxy("/car35/controller/follow_path", FollowPath())
+    controller = rospy.ServiceProxy("controller/follow_path", FollowPath())
     success = controller(path)
     print ("Controller started")
 
@@ -161,7 +161,7 @@ if __name__ == '__main__':
     else:
         h = Header()
         h.stamp = rospy.Time.now()
-        desired_speed = 2.0
+        desired_speed = 0.5
         ramp_percent = 0.1
         ramp_up = np.linspace(0.0, desired_speed, int(ramp_percent * len(configs)))
         ramp_down = np.linspace(desired_speed, 0.3, int(ramp_percent * len(configs)))
