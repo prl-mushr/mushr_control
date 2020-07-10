@@ -42,7 +42,7 @@ class ControlNode:
 
         rate = rospy.Rate(50)
         self.inferred_pose = None
-        print("Control Node Initialized")
+        rospy.loginfo("Control Node Initialized")
 
         while not rospy.is_shutdown():
             self.path_event.wait()
@@ -61,9 +61,15 @@ class ControlNode:
                 if self.running and next_ctrl is not None:
                     rospy.logwarn("sending command")
                     self.publish_ctrl(next_ctrl)
+                    rospy.logwarn("Publish {}".format(next_ctrl)) 
                 if self.controller.path_complete(ip, error):
-                    print("Path Completed!")
+                    rospy.logwarn("Path Completed! {}, {}".format(ip, error))
                     self.path_event.clear()
+            else:
+                if ip is None:
+                    rospy.logfatal("pose not set")
+                if not self.controller.is_ready():
+                    rospy.logfatal("controller is not ready")
             self.reset_lock.release()
             rate.sleep()
 
@@ -76,6 +82,7 @@ class ControlNode:
     def load_controller(self):
         self.controller_type = rospy.get_param("controller/type", default="PID")
         self.controller = controllers[self.controller_type]()
+        rospy.logwarn("Loaded controller {}".format(self.controller_type))
 
     def setup_pub_sub(self):
         rospy.Service("~reset/hard", SrvEmpty, self.srv_reset_hard)
@@ -175,12 +182,12 @@ class ControlNode:
         return []
 
     def cb_path(self, msg):
-        print("Got path!")
+        rospy.logwarn("Got path!")
         path = msg.path.waypoints
         self.visualize_path(path)
         self.controller.set_path(path)
         self.path_event.set()
-        print("Path set")
+        rospy.logwarn("Path set")
         return True
 
     def cb_pose(self, msg):

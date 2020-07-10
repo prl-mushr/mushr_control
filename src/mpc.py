@@ -247,7 +247,7 @@ class ModelPredictiveController(BaseController):
             map_msg - a GetMap message returned by the mapserver
         '''
         srv_name = rospy.get_param("static_map", default="/static_map")
-        rospy.logdebug("Waiting for map service")
+        rospy.logdebug("Waiting for map service {}".format(srv_name))
         rospy.wait_for_service(srv_name)
         rospy.logdebug("Map service started")
 

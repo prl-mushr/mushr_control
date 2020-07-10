@@ -21,7 +21,7 @@ def wave():
     t = np.linspace(0, 20, 100)
     y = np.sin(t)
     theta = np.cos(t)
-    configs = [[x, y, _theta] for (x, y, _theta) in zip(t, y, theta)]
+    configs = [[y, x, _theta] for (x, y, _theta) in zip(t, y, theta)]
     return configs
 
 
@@ -37,11 +37,11 @@ def circle():
 
 def left_turn():
     waypoint_sep = 0.1
-    turn_radius = 1.5
-    straight_len = 10.0
+    turn_radius = 0.5
+    straight_len = 3.0
     turn_center = [straight_len, turn_radius]
     straight_xs = np.linspace(0, straight_len, int(straight_len / waypoint_sep))
-    straight_poses = [[x, 0, 0] for x in straight_xs]
+    straight_poses = [[0, y, 0] for y in straight_xs]
     num_turn_points = int((turn_radius * np.pi * 0.5) / waypoint_sep)
     thetas = np.linspace(-1 * np.pi / 2, 0, num_turn_points)
     turn_poses = [[turn_radius * np.cos(theta) + turn_center[0], turn_radius * np.sin(theta) + turn_center[1], theta + (np.pi / 2)] for theta in thetas]
@@ -51,8 +51,8 @@ def left_turn():
 
 def right_turn():
     waypoint_sep = 0.1
-    turn_radius = 1.5
-    straight_len = 1.5
+    turn_radius = 2.0
+    straight_len = 1.0
     turn_center = [straight_len, -turn_radius]
     straight_xs = np.linspace(0, straight_len, int(straight_len / waypoint_sep))
     straight_poses = [[x, 0, 0] for x in straight_xs]
@@ -121,6 +121,7 @@ def rosquaternion_to_angle(q):
     return yaw
 
 def shift_zero_pose(configs, shift_by):
+    rospy.logwarn("Current pose (shift by)" + str( shift_by))
     shift_by[2] = 0
     shifted_configs = []
     _configs = np.array(configs) + np.array(shift_by)
@@ -140,13 +141,14 @@ def generate_plan(local_coordinates=True):
     if plan_names[index] == 'cse022 real path':
         return plans[plan_names[index]]()
     if local_coordinates:
+        rospy.logwarn("Shift to zero pose")
         return shift_zero_pose(plans[plan_names[index]](), get_current_pose())
     else:
         return plans[plan_names[index]]()
 
 def send_path(path):
     print ("Sending path...")
-    controller = rospy.ServiceProxy("controller/follow_path", FollowPath())
+    controller = rospy.ServiceProxy("/car35/controller/follow_path", FollowPath())
     success = controller(path)
     print ("Controller started")
 
@@ -174,8 +176,11 @@ if __name__ == '__main__':
     wait_for_signal = rospy.get_param(rospy.search_param("wait_for_signal"))
 
     if wait_for_signal:
+        rospy.logwarn("Wait for staring signal")
         msg = rospy.wait_for_message("start_path_following", Bool, timeout=None)
+        rospy.logwarn("Message received")
         if msg.data == True:
+            rospy.logwarn("Send path")
             send_path(path)
     else:
         send_path(path)
