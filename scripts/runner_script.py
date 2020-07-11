@@ -70,8 +70,8 @@ def cse022_path():
         p = pickle.load(f)
     return p
 
-def goal():
-    goal_xy = np.array([3.5, -1.0])
+def goal(x, y):
+    goal_xy = np.array([x, y])
     # straight line
     waypoint_sep = 0.1
     line_len = np.linalg.norm(goal_xy)
@@ -160,6 +160,10 @@ def generate_plan(local_coordinates=True):
     else:
         return plans[plan_names[index]]()
 
+def generate_goal_plan(x, y):
+    print("x, y", x, y)
+    return shift_zero_pose(goal(x,y), get_current_pose())
+
 def send_path(path):
     print ("Sending path...")
     controller = rospy.ServiceProxy("controller/follow_path", FollowPath())
@@ -168,7 +172,9 @@ def send_path(path):
 
 if __name__ == '__main__':
     rospy.init_node("controller_runner")
-    configs = generate_plan()
+    desired_x = float(rospy.get_param(rospy.search_param("desired_x")))
+    desired_y = float(rospy.get_param(rospy.search_param("desired_y")))
+    configs = generate_goal_plan(desired_x, desired_y)
 
     if type(configs) == XYHVPath:
         path = configs
