@@ -70,19 +70,16 @@ def cse022_path():
         p = pickle.load(f)
     return p
 
-
 def goal():
-    goal_xy = np.array([5.0, 5.0])
-    init_pose = np.array([0.0, 0.0, 0.0])
+    goal_xy = np.array([3.5, -1.0])
     # straight line
     waypoint_sep = 0.1
-    line_len = np.linalg.norm(goal_xy - init_pose[:2])
-    straight_xs = np.linspace(init_pose[0], goal_xy[0], int(line_len / waypoint_sep))
-    straight_ys = np.linspace(init_pose[1], goal_xy[1], int(line_len / waypoint_sep))
-    # TODO
-    thetas = [init_pose[2]] * int(line_len / waypoint_sep)
+    line_len = np.linalg.norm(goal_xy)
+    straight_xs = np.linspace(0, goal_xy[0], int(line_len / waypoint_sep))
+    straight_ys = np.linspace(0, goal_xy[1], int(line_len / waypoint_sep))
+    final_theta = np.arctan2(goal_xy[1], goal_xy[0])
+    thetas = np.linspace(0, final_theta, int(line_len / waypoint_sep))
     poses = np.array([straight_xs, straight_ys, thetas]).transpose()
-    print("poses", poses.shape)
     return poses
 
 
@@ -120,14 +117,31 @@ def rosquaternion_to_angle(q):
     _, _, yaw = tf.transformations.euler_from_quaternion((x, y, z, w))
     return yaw
 
+def to_matrix(configs):
+    # (x,y,theta) to Matrix
+    c = np.cos(configs[:,2])
+    s = np.sin(configs[:,2])
+    R = np.array([(c, -s), (s, c)])
+
+    T = np.concatenate([R, configs[:, :2].transpose()[:,None,:]], axis=1)
+    T = np.concatenate([T, np.tile(np.array([0,0,1]),(1,len(configs),1)).transpose(0,2,1)], axis=0)
+    return T
+
+def to_pose(configs):
+    # Matrix to (x,y,theta)
+    poses = []
+    for config in configs:
+        theta = np.arctan2(config[1,0], config[0,0])
+        poses += [(config[0,2], config[1,2], theta)]
+    return np.array(poses)
+
 def shift_zero_pose(configs, shift_by):
     rospy.logwarn("Current pose (shift by)" + str( shift_by))
-    shift_by[2] = 0
     shifted_configs = []
-    _configs = np.array(configs) + np.array(shift_by)
-    for c in _configs:
-        #c[2] = (c[2] + 2*np.pi) % (2*np.pi)
-        shifted_configs.append(list(c))
+    T = to_matrix(np.array([shift_by]).reshape(1,-1)).squeeze()
+    configs = to_matrix(configs).transpose(2,0,1)
+    shifted_configs = np.array([np.dot(T, config) for config in configs])
+    shifted_configs = to_pose(shifted_configs)
     return shifted_configs
 
 def generate_plan(local_coordinates=True):
@@ -161,10 +175,10 @@ if __name__ == '__main__':
     else:
         h = Header()
         h.stamp = rospy.Time.now()
-        desired_speed = 0.5
-        ramp_percent = 0.1
+        desired_speed = float(rospy.get_param(rospy.search_param("desired_speed")))
+        ramp_percent = 0.05
         ramp_up = np.linspace(0.0, desired_speed, int(ramp_percent * len(configs)))
-        ramp_down = np.linspace(desired_speed, 0.3, int(ramp_percent * len(configs)))
+        ramp_down = np.linspace(desired_speed, 0.5, int(ramp_percent * len(configs)))
         speeds = np.zeros(len(configs))
         speeds[:] = desired_speed
         speeds[0:len(ramp_up)] = ramp_up

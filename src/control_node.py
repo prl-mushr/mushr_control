@@ -59,7 +59,6 @@ class ControlNode:
 
                 # Check for signal to run
                 if self.running and next_ctrl is not None:
-                    rospy.logwarn("sending command")
                     self.publish_ctrl(next_ctrl)
                     rospy.logwarn("Publish {}".format(next_ctrl)) 
                 if self.controller.path_complete(ip, error):
