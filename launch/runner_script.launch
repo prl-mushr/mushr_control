@@ -4,11 +4,13 @@
     <arg name="desired_speed" default="0.8" />
     <arg name="desired_x" default="3.5" />
     <arg name="desired_y" default="0.5" />
+    <arg name="local" default="false" />
 
     <group ns="$(arg car_name)">
         <node pkg="mushr_control" name="runner_script" type="runner_script.py" output="screen">
             <param name="wait_for_signal" value="$(arg wait_for_signal)" />
             <param name="desired_speed" value="$(arg desired_speed)" />
+            <param name="local_coords" value="$(arg local)" />
             <param name="desired_x" value="$(arg desired_x)" />
             <param name="desired_y" value="$(arg desired_y)" />
         </node>

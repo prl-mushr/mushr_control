@@ -72,13 +72,14 @@ def cse022_path():
 
 def goal(x, y):
     goal_xy = np.array([x, y])
+    init_pose = (0,0,0)
     # straight line
     waypoint_sep = 0.1
     line_len = np.linalg.norm(goal_xy)
-    straight_xs = np.linspace(0, goal_xy[0], int(line_len / waypoint_sep))
-    straight_ys = np.linspace(0, goal_xy[1], int(line_len / waypoint_sep))
+    straight_xs = np.linspace(init_pose[0], goal_xy[0], int(line_len / waypoint_sep))
+    straight_ys = np.linspace(init_pose[1], goal_xy[1], int(line_len / waypoint_sep))
     final_theta = np.arctan2(goal_xy[1], goal_xy[0])
-    thetas = np.linspace(0, final_theta, int(line_len / waypoint_sep))
+    thetas = np.linspace(init_pose[2], final_theta, int(line_len / waypoint_sep))
     poses = np.array([straight_xs, straight_ys, thetas]).transpose()
     return poses
 
@@ -161,7 +162,7 @@ def generate_plan(local_coordinates=True):
         return plans[plan_names[index]]()
 
 def generate_goal_plan(x, y):
-    print("x, y", x, y)
+    print("dx {} dy {}".format(x, y))
     return shift_zero_pose(goal(x,y), get_current_pose())
 
 def send_path(path):
@@ -174,6 +175,22 @@ if __name__ == '__main__':
     rospy.init_node("controller_runner")
     desired_x = float(rospy.get_param(rospy.search_param("desired_x")))
     desired_y = float(rospy.get_param(rospy.search_param("desired_y")))
+    local_coords = bool(rospy.get_param(rospy.search_param("local_coords")))
+    if not local_coords:
+        if desired_x > 0.5:
+            theta = 0
+        else:
+            theta = -np.pi
+        goal_pose = np.array([[desired_x, desired_y, theta]])
+        goal_T = to_matrix(goal_pose).squeeze()
+        
+        curr_T = to_matrix(np.array([get_current_pose()]).reshape(1,-1)).squeeze()
+        rel_T = np.dot(np.linalg.inv(curr_T),goal_T)
+        desired_x = rel_T[0,-1]
+        desired_y = rel_T[1,-1]
+    print("Desired dx", desired_x)
+    print("Desired dy", desired_y)
+
     configs = generate_goal_plan(desired_x, desired_y)
 
     if type(configs) == XYHVPath:
