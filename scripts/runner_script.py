@@ -184,7 +184,7 @@ if __name__ == '__main__':
         desired_speed = float(rospy.get_param(rospy.search_param("desired_speed")))
         ramp_percent = 0.05
         ramp_up = np.linspace(0.0, desired_speed, int(ramp_percent * len(configs)))
-        ramp_down = np.linspace(desired_speed, 0.5, int(ramp_percent * len(configs)))
+        ramp_down = np.linspace(desired_speed, 0.5, max(1, int(ramp_percent * len(configs))))
         speeds = np.zeros(len(configs))
         speeds[:] = desired_speed
         speeds[0:len(ramp_up)] = ramp_up
